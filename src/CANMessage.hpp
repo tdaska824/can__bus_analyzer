@@ -2,14 +2,14 @@
 #define CANMESSAGE_HPP
 
 #include <vector>
-#include <string>
 
-struct CANMessage {
-    int id;
+struct CANMessage
+{
+    int id; // 11-bit identifier
     std::vector<int> data;
-    double timestamp;
+    double timestamp; // time in seconds since the start of the capture
 
-    CANMessage(int id, const std::vector<int>& data, double timestamp);
+    CANMessage(int id, const std::vector<int> &data, double timestamp);
 };
 
 #endif

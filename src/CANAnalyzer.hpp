@@ -1,16 +1,25 @@
 #ifndef CANANALYZER_HPP
 #define CANANALYZER_HPP
 
-#include "CANMessage.hpp"
-#include <vector>
-#include <unordered_map>
+#include <map>
 #include <string>
+#include <vector>
+#include "CANMessage.hpp"
 
-class CANAnalyzer {
+class CANAnalyzer
+{
 public:
+    void addMessage(const CANMessage &message);
+
     void simulateMessages();
-    void printStatistics();
-    void exportToCSV(const std::string& filename, int filterID);
+
+    std::map<int, int> countByID() const;
+
+    void printStatistics() const;
+
+    int exportToCSV(const std::string &filename, int filterID) const;
+
+    const std::vector<CANMessage> &getMessages() const;
 
 private:
     std::vector<CANMessage> messages;

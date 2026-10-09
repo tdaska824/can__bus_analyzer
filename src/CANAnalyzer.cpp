@@ -1,60 +1,97 @@
 #include "CANAnalyzer.hpp"
-#include <iostream>
-#include <fstream>
+
 #include <cstdlib>
-#include <ctime>
+#include <fstream>
 #include <iomanip>
+#include <iostream>
 
-void CANAnalyzer::simulateMessages() {
-    std::srand(std::time(nullptr));
+namespace
+{
+    constexpr int kBaseId = 0x100;
+    constexpr int kIdCount = 10;
+    constexpr int kBackgroundMessages = 100;
+    constexpr double kPeriodSeconds = 0.05;
+    constexpr int kSpecialId = 0x321;
+    constexpr int kSpecialMessages = 5;
+} // namespace
 
-    for (int i = 0; i < 100; ++i) {
-        int id = 0x100 + (std::rand() % 10); // ids μεταξύ 0x100 και 0x109
-        std::vector<int> data = { std::rand() % 256, std::rand() % 256 };
-        double timestamp = i * 0.05; // simulate 50ms intervals
+void CANAnalyzer::addMessage(const CANMessage &message)
+{
+    messages.push_back(message);
+}
+
+void CANAnalyzer::simulateMessages()
+{
+    messages.clear();
+    for (int i = 0; i < kBackgroundMessages; ++i)
+    {
+        int id = kBaseId + (std::rand() % kIdCount);
+        std::vector<int> data = {std::rand() % 256, std::rand() % 256};
+        double timestamp = i * kPeriodSeconds;
 
         messages.emplace_back(id, data, timestamp);
     }
 
-    // Προσθέτουμε και μερικά μηνύματα με ID 0x321
-    for (int i = 0; i < 5; ++i) {
-        std::vector<int> data = { std::rand() % 256, std::rand() % 256 };
-        double timestamp = 5.0 + i * 0.05;
-        messages.emplace_back(0x321, data, timestamp);
+    for (int i = 0; i < kSpecialMessages; ++i)
+    {
+        std::vector<int> data = {std::rand() % 256, std::rand() % 256};
+        double timestamp = 5.0 + i * kPeriodSeconds;
+
+        messages.emplace_back(kSpecialId, data, timestamp);
     }
 }
 
-void CANAnalyzer::printStatistics() {
-    std::unordered_map<int, int> idCount;
-
-    for (const auto& msg : messages) {
-        idCount[msg.id]++;
+std::map<int, int> CANAnalyzer::countByID() const
+{
+    std::map<int, int> idCount;
+    for (const auto &msg : messages)
+    {
+        ++idCount[msg.id];
     }
+    return idCount;
+}
 
-    std::cout << "Message Statistics by ID:" << std::endl;
-    for (const auto& pair : idCount) {
-        std::cout << "ID: 0x" << std::hex << pair.first
-                  << " | Count: " << std::dec << pair.second << std::endl;
+void CANAnalyzer::printStatistics() const
+{
+    std::cout << "Message Statistics by ID (" << messages.size() << " messages):\n";
+    for (const auto &entry : countByID())
+    {
+        std::cout << "ID: 0x" << std::hex << entry.first
+                  << " | Count: " << std::dec << entry.second << '\n';
     }
 }
 
-void CANAnalyzer::exportToCSV(const std::string& filename, int filterID) {
+int CANAnalyzer::exportToCSV(const std::string &filename, int filterID) const
+{
     std::ofstream file(filename);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         std::cerr << "Failed to open file for writing: " << filename << std::endl;
-        return;
+        return -1;
     }
 
     file << "ID,Data1,Data2,Timestamp\n";
-    for (const auto& msg : messages) {
-        if (msg.id != filterID) continue;  // Φίλτρο: μόνο ID που δίνει ο χρήστης
 
-        file << "0x" << std::hex << msg.id << ","
-             << std::dec << msg.data[0] << ","
-             << msg.data[1] << ","
-             << std::fixed << std::setprecision(2) << msg.timestamp << "\n";
+    int exported = 0;
+    for (const auto &msg : messages)
+    {
+        if (msg.id != filterID)
+            continue;
+
+        file << "0x" << std::hex << msg.id << std::dec << ',';
+        if (msg.data.size() > 0)
+            file << msg.data[0];
+        file << ',';
+        if (msg.data.size() > 1)
+            file << msg.data[1];
+        file << ',' << std::fixed << std::setprecision(2) << msg.timestamp << '\n';
+        ++exported;
     }
 
-    file.close();
-    std::cout << "Filtered messages (ID = 0x" << std::hex << filterID << ") exported to " << filename << std::endl;
+    return exported;
+}
+
+const std::vector<CANMessage> &CANAnalyzer::getMessages() const
+{
+    return messages;
 }
